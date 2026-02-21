@@ -13,7 +13,7 @@
   <!-- DSU HelpBot -->
   <iframe
     id="dsu-bot"
-    src="./widget.html?v=3"
+    src="./widget.html"
     style="
       position: fixed;
       bottom: 0;
@@ -23,14 +23,12 @@
       border: none;
       background: transparent;
       z-index: 9999;
-      pointer-events: none;
     "
     allowtransparency="true"
     scrolling="no">
   </iframe>
 
   <style>
-    #dsu-bot { pointer-events: all; }
     @media (max-width: 480px) {
       #dsu-bot { width: 100vw !important; }
     }
