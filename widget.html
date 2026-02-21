@@ -490,23 +490,46 @@ async function sendMessage() {
 
 function searchLocal(query) {
   if (knowledgeBase.length === 0) {
-    return "📎 Please upload a college document first (PDF, TXT, etc.) so I can answer questions from it!\n\nOr ask me general questions like admission requirements, fees, or exams — if you haven't uploaded documents yet, I'll need them to give accurate answers.";
+    return "📎 Please upload a college document first (PDF, TXT, etc.) so I can answer questions from it!";
   }
 
   const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  let best = null, bestScore = 0;
-
-  for (const chunk of knowledgeBase) {
+  
+  // Score all chunks and get top 3 matches
+  const scored = knowledgeBase.map(chunk => {
     const t = chunk.text.toLowerCase();
     const score = qWords.reduce((acc, w) => acc + (t.includes(w) ? (t.split(w).length - 1) : 0), 0);
-    if (score > bestScore) { bestScore = score; best = chunk; }
+    return { ...chunk, score };
+  }).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+
+  if (scored.length === 0) return botConfig.fallbackMsg;
+
+  const best = scored[0];
+
+  // Extract only the most relevant sentences (max 2)
+  const sentences = best.text
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 20);
+
+  // Find sentences that contain the query keywords
+  const relevant = sentences.filter(s =>
+    qWords.some(w => s.toLowerCase().includes(w))
+  );
+
+  // Pick best 1-2 sentences only
+  const picked = (relevant.length > 0 ? relevant : sentences).slice(0, 2);
+
+  // Format as clean short answer
+  let answer = picked.join(' ').trim();
+
+  // If answer is still too long, cut it at 200 chars cleanly
+  if (answer.length > 220) {
+    const cut = answer.lastIndexOf('.', 220);
+    answer = cut > 80 ? answer.slice(0, cut + 1) : answer.slice(0, 220) + '...';
   }
 
-  if (!best || bestScore === 0) return botConfig.fallbackMsg;
-
-  const sentences = best.text.split(/(?<=[.!?])\s+/);
-  const answer = sentences.slice(0, 5).join(' ');
-  return answer + '\n\n📄 From: ' + best.source;
+  return answer + '\n\n📄 ' + best.source;
 }
 
 async function askClaude(query) {
