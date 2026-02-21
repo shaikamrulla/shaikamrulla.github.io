@@ -285,14 +285,14 @@
   <div class="chat-header">
     <div class="header-avatar">🎓</div>
     <div class="header-info">
-      <div class="header-name" id="botNameDisplay">CampusBot</div>
+      <div class="header-name" id="botNameDisplay">DSU HelpBot</div>
       <div class="header-status"><span class="status-dot"></span> Online · Ask me anything</div>
     </div>
     <button class="header-btn" onclick="closeChat()" title="Close">✕</button>
   </div>
 
-  <!-- Upload bar -->
-  <div class="upload-bar" id="uploadBar">
+  <!-- Upload bar hidden — data is pre-loaded -->
+  <div class="upload-bar" id="uploadBar" style="display:none;">
     <input type="file" id="docUpload" accept=".pdf,.txt,.doc,.docx" multiple onchange="handleUpload(this.files)">
     <div class="ub-icon">📎</div>
     <div class="ub-text">
@@ -315,9 +315,8 @@
       <div class="msg-avatar">🎓</div>
       <div>
         <div class="bubble" id="welcomeBubble">
-          Hi! I'm CampusBot 👋<br>
-          Ask me anything about admissions, fees, exams, or college life!<br><br>
-          <strong>📎 Tip:</strong> Upload your college handbook or regulations PDF above and I'll answer from it!
+          Hi! I'm DSU HelpBot 👋<br>
+          I can answer your questions about <strong>Dhanalakshmi Srinivasan University</strong> — admissions, fees, exams, hostel and more!
         </div>
       </div>
     </div>
@@ -347,11 +346,67 @@ let docCount = 0;
 let isOpen = false;
 let isTyping = false;
 
-// Config (can be injected by parent page via postMessage or URL params)
+// ══════════════════════════════════════════════
+//  COLLEGE DATA — Edit this to update the bot!
+// ══════════════════════════════════════════════
+const COLLEGE_FAQ = [
+  {
+    q: ["admission", "apply", "requirement", "eligibility", "join", "enroll"],
+    a: "Admission requires a minimum of 60% marks in 10+2. Documents needed: Transfer Certificate (TC), mark sheet, and passport-size photos. Last date to apply is June 30."
+  },
+  {
+    q: ["documents", "certificate", "tc", "marksheet", "photo", "needed"],
+    a: "Required documents for admission: Transfer Certificate (TC), 10+2 mark sheet, and passport-size photographs."
+  },
+  {
+    q: ["last date", "deadline", "apply before", "application date"],
+    a: "The last date to apply for admission is June 30. Make sure to submit all documents before the deadline."
+  },
+  {
+    q: ["fee", "fees", "cost", "tuition", "annual", "pay", "payment", "amount"],
+    a: "The annual tuition fee is ₹1,20,000 per year. Hostel fee is ₹80,000 per year. Contact the accounts office for payment options."
+  },
+  {
+    q: ["hostel", "accommodation", "stay", "boarding", "room", "dorm"],
+    a: "Hostel is available for both boys and girls. Hostel fee is ₹80,000 per year. In-time (curfew) is 9:00 PM daily."
+  },
+  {
+    q: ["in-time", "intime", "curfew", "night", "timing", "hostel time"],
+    a: "Hostel in-time (curfew) is 9:00 PM. Students must return to the hostel before 9:00 PM daily."
+  },
+  {
+    q: ["exam", "exams", "examination", "test", "semester", "sem"],
+    a: "Semester 1 exams are held in November. Results are announced within 30 days after the exams."
+  },
+  {
+    q: ["result", "results", "marks", "grade", "score", "when result"],
+    a: "Exam results are published within 30 days after the semester exams are completed."
+  },
+  {
+    q: ["college name", "university", "dsu", "dhanalakshmi", "about"],
+    a: "This is Dhanalakshmi Srinivasan University (DSU) — a leading university offering quality education across engineering, arts, science and management programs."
+  },
+  {
+    q: ["contact", "phone", "email", "office", "reach", "help", "support"],
+    a: "Please contact the DSU administrative office for further assistance. Visit the college website or call the main office directly."
+  }
+];
+
+// Load FAQ into knowledge base on startup
+function loadBuiltInData() {
+  COLLEGE_FAQ.forEach(item => {
+    knowledgeBase.push({
+      source: 'DSU Official Data',
+      text: item.a,
+      keywords: item.q
+    });
+  });
+}
+
+// Config
 let botConfig = {
-  botName: 'CampusBot',
-  welcomeMsg: null,
-  fallbackMsg: "I'm not sure about that. Please contact our college office for more information.",
+  botName: 'DSU HelpBot',
+  fallbackMsg: "I'm not sure about that. Please contact the DSU administrative office directly for more information.",
   apiKey: null,
   provider: 'free'
 };
@@ -363,6 +418,9 @@ if (params.get('apiKey')) botConfig.apiKey = params.get('apiKey');
 if (params.get('provider')) botConfig.provider = params.get('provider');
 
 document.getElementById('botNameDisplay').textContent = botConfig.botName;
+
+// Load built-in college data immediately
+loadBuiltInData();
 
 function openChat() {
   isOpen = true;
@@ -490,46 +548,29 @@ async function sendMessage() {
 
 function searchLocal(query) {
   if (knowledgeBase.length === 0) {
-    return "📎 Please upload a college document first (PDF, TXT, etc.) so I can answer questions from it!";
+    return botConfig.fallbackMsg;
   }
 
-  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  
-  // Score all chunks and get top 3 matches
-  const scored = knowledgeBase.map(chunk => {
+  const q = query.toLowerCase();
+  const qWords = q.split(/\s+/).filter(w => w.length > 2);
+
+  // Score by keyword match first (pre-loaded FAQ)
+  let best = null, bestScore = 0;
+  for (const chunk of knowledgeBase) {
+    let score = 0;
+    if (chunk.keywords) {
+      // keyword-based matching for built-in FAQ
+      score = chunk.keywords.reduce((acc, kw) => acc + (q.includes(kw) ? 2 : 0), 0);
+    }
+    // also score by word overlap in answer text
     const t = chunk.text.toLowerCase();
-    const score = qWords.reduce((acc, w) => acc + (t.includes(w) ? (t.split(w).length - 1) : 0), 0);
-    return { ...chunk, score };
-  }).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+    score += qWords.reduce((acc, w) => acc + (t.includes(w) ? 1 : 0), 0);
 
-  if (scored.length === 0) return botConfig.fallbackMsg;
-
-  const best = scored[0];
-
-  // Extract only the most relevant sentences (max 2)
-  const sentences = best.text
-    .split(/(?<=[.!?])\s+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 20);
-
-  // Find sentences that contain the query keywords
-  const relevant = sentences.filter(s =>
-    qWords.some(w => s.toLowerCase().includes(w))
-  );
-
-  // Pick best 1-2 sentences only
-  const picked = (relevant.length > 0 ? relevant : sentences).slice(0, 2);
-
-  // Format as clean short answer
-  let answer = picked.join(' ').trim();
-
-  // If answer is still too long, cut it at 200 chars cleanly
-  if (answer.length > 220) {
-    const cut = answer.lastIndexOf('.', 220);
-    answer = cut > 80 ? answer.slice(0, cut + 1) : answer.slice(0, 220) + '...';
+    if (score > bestScore) { bestScore = score; best = chunk; }
   }
 
-  return answer + '\n\n📄 ' + best.source;
+  if (!best || bestScore === 0) return botConfig.fallbackMsg;
+  return best.text;
 }
 
 async function askClaude(query) {
