@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Bot Admin — Knowledge Base Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --cream: #ede8dc;
+    --gold: #c9a84c;
+    --gold-light: #f0d98a;
+    --rust: #c45c3a;
+    --sage: #5a7a5e;
+    --muted: #7a7060;
+    --border: #d4cec4;
+    --white: #fdfcf9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Instrument Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 260px;
+    background: var(--ink);
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+    margin-bottom: 32px;
+    line-height: 1.2;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .logo span { display: block; font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'Instrument Sans'; font-weight: 400; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none; background: none; text-align: left; width: 100%;
+    font-family: 'Instrument Sans';
+  }
+  .nav-item:hover, .nav-item.active {
+    background: rgba(255,255,255,0.08);
+    color: var(--gold-light);
+  }
+  .nav-item .icon { font-size: 16px; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    line-height: 1.6;
+  }
+
+  /* Main */
+  .main { flex: 1; padding: 40px 48px; overflow-y: auto; }
+  .page-title {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .page-sub { color: var(--muted); font-size: 14px; margin-bottom: 36px; }
+
+  /* Stats row */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .stat-card .value { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--ink); }
+  .stat-card .value.gold { color: var(--gold); }
+  .stat-card .value.sage { color: var(--sage); }
+
+  /* Cards */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-desc { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.04);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-zone h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .upload-zone p { color: var(--muted); font-size: 13px; }
+  .upload-zone .types {
+    display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap;
+  }
+  .type-badge {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* Processing progress */
+  .process-bar-wrap { margin-top: 20px; display: none; }
+  .process-bar-wrap.active { display: block; }
+  .process-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .process-bar { height: 6px; background: var(--cream); border-radius: 100px; overflow: hidden; }
+  .process-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    border-radius: 100px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* Doc list */
+  .doc-list { display: flex; flex-direction: column; gap: 10px; }
+  .doc-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform: translateX(-10px); } to { opacity:1; transform: translateX(0); } }
+  .doc-icon { font-size: 24px; flex-shrink: 0; }
+  .doc-info { flex: 1; }
+  .doc-name { font-size: 14px; font-weight: 600; }
+  .doc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .doc-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 4px 10px; border-radius: 100px;
+  }
+  .doc-status.ready { background: rgba(90,122,94,0.1); color: var(--sage); }
+  .doc-status.processing { background: rgba(201,168,76,0.1); color: var(--gold); }
+  .doc-actions { display: flex; gap: 6px; }
+  .doc-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; cursor: pointer;
+    font-family: 'Instrument Sans'; color: var(--muted); transition: all 0.2s;
+  }
+  .doc-btn:hover { border-color: var(--rust); color: var(--rust); }
+
+  /* API key section */
+  .api-row {
+    display: flex; gap: 12px; align-items: flex-end;
+  }
+  .form-group { flex: 1; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--ink); letter-spacing: 0.5px; text-transform: uppercase; }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Instrument Sans';
+    font-size: 14px;
+    background: var(--cream);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--gold); }
+  .form-group .hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: 'Instrument Sans';
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    white-space: nowrap;
+  }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .btn-gold:hover { background: #b8943e; }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--ink); }
+  .btn-outline:hover { border-color: var(--ink); }
+  .btn-sage { background: var(--sage); color: #fff; }
+  .btn-sage:hover { background: #4a6a4e; }
+
+  /* Embed code */
+  .code-block {
+    background: var(--ink);
+    color: #a8e6cf;
+    border-radius: 10px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block .copy-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(255,255,255,0.1);
+    border: none; color: rgba(255,255,255,0.6);
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; cursor: pointer; font-family: 'Instrument Sans';
+    transition: all 0.2s;
+  }
+  .code-block .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+  .code-comment { color: #6a8f7a; }
+  .code-tag { color: #f0d98a; }
+  .code-attr { color: #a8d8ea; }
+  .code-val { color: #ffb347; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab-btn {
+    padding: 10px 20px; font-size: 14px; font-weight: 500;
+    border: none; background: none; cursor: pointer; color: var(--muted);
+    font-family: 'Instrument Sans'; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.2s;
+  }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--gold); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--ink); color: var(--gold-light);
+    padding: 12px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Steps */
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .step-box {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    background: var(--gold); color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .step-box h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .step-box p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .api-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      🎓 CollegeBot Admin
+      <span>Knowledge Base Manager</span>
+    </div>
+    <button class="nav-item active" onclick="switchPanel('upload')">
+      <span class="icon">📁</span> Knowledge Base
+    </button>
+    <button class="nav-item" onclick="switchPanel('config')">
+      <span class="icon">⚙️</span> Bot Configuration
+    </button>
+    <button class="nav-item" onclick="switchPanel('embed')">
+      <span class="icon">🔗</span> Embed on Website
+    </button>
+    <button class="nav-item" onclick="switchPanel('test')">
+      <span class="icon">💬</span> Test Bot
+    </button>
+    <div class="sidebar-footer">
+      Tip: Upload your full college handbook, regulations PDF, and exam calendar for best results.
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- UPLOAD PANEL -->
+    <div class="panel active" id="panel-upload">
+      <div class="page-title">Knowledge Base</div>
+      <div class="page-sub">Upload your college documents — the bot learns from everything you add here.</div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="label">Documents</div>
+          <div class="value gold" id="stat-docs">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Pages Indexed</div>
+          <div class="value" id="stat-pages">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Q&A Pairs</div>
+          <div class="value sage" id="stat-qa">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Bot Status</div>
+          <div class="value" id="stat-status" style="font-size:16px;padding-top:6px;">⚪ Idle</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📄 Upload Documents</div>
+        <div class="card-desc">Upload PDFs, Word docs, or text files containing your college regulations, FAQs, syllabi, policies, and any other information students ask about.</div>
+
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" multiple accept=".pdf,.txt,.doc,.docx" onchange="handleFiles(this.files)">
+          <div class="upload-icon">📂</div>
+          <h3>Drop files here or click to browse</h3>
+          <p>Your bot will read and index every page automatically</p>
+          <div class="types">
+            <span class="type-badge">PDF</span>
+            <span class="type-badge">TXT</span>
+            <span class="type-badge">DOC/DOCX</span>
+          </div>
+        </div>
+
+        <div class="process-bar-wrap" id="processBar">
+          <div class="process-label">
+            <span id="processLabel">Reading document...</span>
+            <span id="processPct">0%</span>
+          </div>
+          <div class="process-bar"><div class="process-fill" id="processFill"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📚 Indexed Documents</div>
+        <div class="card-desc">All uploaded documents are stored in the bot's knowledge base. Remove any file to exclude it from answers.</div>
+        <div class="doc-list" id="docList">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:24px;">No documents yet — upload your first file above</div>
+        </div>
+      </div>
+
+      <!-- What to upload guide -->
+      <div class="card">
+        <div class="card-title">💡 What Should You Upload?</div>
+        <div class="card-desc">The more relevant documents you add, the smarter your bot becomes. Here's what works best:</div>
+        <div class="steps-grid">
+          <div class="step-box">
+            <div class="step-num">1</div>
+            <h4>College Handbook / Regulations</h4>
+            <p>The master document with all rules, code of conduct, dress code, attendance policy, disciplinary procedures.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">2</div>
+            <h4>Admission & Fee Documents</h4>
+            <p>Fee structure, scholarship details, admission criteria, required documents, important dates and deadlines.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">3</div>
+            <h4>Academic Calendar & Exam Schedule</h4>
+            <p>Semester dates, exam timetables, result dates, holiday list, internal assessment schedules.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">4</div>
+            <h4>Course & Syllabus Details</h4>
+            <p>Available programs, subjects offered, credit structure, elective options, lab requirements.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">5</div>
+            <h4>Hostel & Transport Rules</h4>
+            <p>Accommodation guidelines, bus routes, hostel fees, warden contact, in-time rules.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">6</div>
+            <h4>FAQ Document (if you have one)</h4>
+            <p>Any existing FAQ sheet, brochure, or student guide your college already distributes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG PANEL -->
+    <div class="panel" id="panel-config">
+      <div class="page-title">Bot Configuration</div>
+      <div class="page-sub">Set up the AI engine that powers your chatbot.</div>
+
+      <div class="card">
+        <div class="card-title">🔑 AI Provider Setup</div>
+        <div class="card-desc">The bot uses an AI API to understand questions and generate answers from your documents. Get a free API key from the provider of your choice.</div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab(this, 'claude')">Claude (Recommended)</button>
+          <button class="tab-btn" onclick="switchTab(this, 'openai')">OpenAI / ChatGPT</button>
+          <button class="tab-btn" onclick="switchTab(this, 'free')">Free / No API</button>
+        </div>
+
+        <div class="panel active" id="panel-claude">
+          <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;">
+            ⭐ <strong>Recommended:</strong> Claude gives the most accurate, context-aware answers. Get your API key free at <strong>console.anthropic.com</strong>
+          </div>
+          <div class="api-row">
+            <div class="form-group">
+              <label>Anthropic API Key</label>
+              <input type="password" id="claudeKey" placeholder="sk-ant-api03-..." />
+              <div class="hint">Get yours at console.anthropic.com → API Keys</div>
+            </div>
+            <div class="form-group" style="flex:0 0 180px;">
+              <label>Model</label>
+              <select id="claudeModel">
+                <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Best)</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Faster)</option>
+              </select>
+            </div>
+            <button class="btn btn-gold" onclick="saveConfig('claude')">Save</button>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-openai">
+          <div class="api-row">
+            <div class="form-group">
+              <label>OpenAI API Key</label>
+              <input type="password" id="openaiKey" placeholder="sk-..." />
+              <div class="hint">Get yours at platform.openai.com → API Keys</div>
+            </div>
+            <div class="form-group" style="flex:0 0 180px;">
+              <label>Model</label>
+              <select id="openaiModel">
+                <option value="gpt-4o-mini">GPT-4o Mini (Affordable)</option>
+                <option value="gpt-4o">GPT-4o (Best)</option>
+              </select>
+            </div>
+            <button class="btn btn-gold" onclick="saveConfig('openai')">Save</button>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-free">
+          <div style="background:rgba(90,122,94,0.08);border:1px solid rgba(90,122,94,0.2);border-radius:10px;padding:16px;font-size:13px;">
+            <strong>Free option:</strong> Without an API key, the bot uses keyword matching — it can still answer questions from your FAQ data but won't understand rephrased questions as well.<br><br>
+            This is a good starting point! You can always add an API key later to upgrade to full AI capability.
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn btn-sage" onclick="saveConfig('free')">Use Free Mode</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎨 Bot Personality</div>
+        <div class="card-desc">Customize how your bot introduces itself and handles questions it can't answer.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label>Bot Name</label>
+            <input type="text" id="botName" placeholder="e.g. Vidya, CampusBot, EduBot" value="CampusBot" />
+          </div>
+          <div class="form-group">
+            <label>College Name</label>
+            <input type="text" id="collegeName" placeholder="e.g. St. Joseph's College of Engineering" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Welcome Message</label>
+            <input type="text" id="welcomeMsg" value="Hi! I'm CampusBot 👋 Ask me anything about admissions, fees, exams, or college life!" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Fallback Message (when bot doesn't know)</label>
+            <input type="text" id="fallbackMsg" value="I'm not sure about that — please contact our office at info@college.edu or call +91-XXXXXXXXXX." />
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-gold" onclick="savePersonality()">Save Personality</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMBED PANEL -->
+    <div class="panel" id="panel-embed">
+      <div class="page-title">Embed on Your Website</div>
+      <div class="page-sub">Copy the code below and paste it into your college website's HTML — the chat widget will appear automatically.</div>
+
+      <div class="card">
+        <div class="card-title">📋 Step 1 — Download the Widget File</div>
+        <div class="card-desc">First, save the chatbot widget file (widget.html) to your web server or hosting. Then use the embed code below.</div>
+        <button class="btn btn-gold" onclick="alert('In the delivered ZIP file, widget.html is included. Host it alongside your college website.')">📦 See Included Files</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Step 2 — Paste This Into Your Website</div>
+        <div class="card-desc">Add this snippet just before the <code>&lt;/body&gt;</code> tag on every page you want the chat widget to appear.</div>
+        <div class="code-block" id="embedCode">
+          <button class="copy-btn" onclick="copyEmbed()">Copy</button>
+<span class="code-comment">&lt;!-- College FAQ Bot Widget --&gt;</span>
+<span class="code-tag">&lt;iframe</span>
+  <span class="code-attr">  id</span>=<span class="code-val">"college-bot-frame"</span>
+  <span class="code-attr">  src</span>=<span class="code-val">"./widget.html"</span>
+  <span class="code-attr">  style</span>=<span class="code-val">"position:fixed;bottom:24px;right:24px;
+          width:380px;height:580px;border:none;
+          z-index:9999;border-radius:20px;
+          box-shadow:0 8px 40px rgba(0,0,0,0.2);"</span>
+<span class="code-tag">&gt;&lt;/iframe&gt;</span>
+
+<span class="code-comment">&lt;!-- On mobile, make it full screen --&gt;</span>
+<span class="code-tag">&lt;style&gt;</span>
+  @media (max-width: 480px) {
+    #college-bot-frame {
+      width: 100vw !important;
+      height: 100vh !important;
+      bottom: 0 !important;
+      right: 0 !important;
+      border-radius: 0 !important;
+    }
+  }
+<span class="code-tag">&lt;/style&gt;</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🌐 Where to Host</div>
+        <div class="card-desc">You need to host the widget.html file somewhere. Here are your options:</div>
+        <div class="steps-grid">
+          <div class="step-box">
+            <div class="step-num">A</div>
+            <h4>Same Server as Website</h4>
+            <p>Easiest. Upload widget.html to the same folder as your index.html. No extra setup needed.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">B</div>
+            <h4>GitHub Pages (Free)</h4>
+            <p>Put widget.html in a GitHub repo, enable Pages, and use the public URL. 100% free hosting.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">C</div>
+            <h4>Netlify / Vercel (Free)</h4>
+            <p>Drag & drop widget.html onto netlify.com. Get a permanent URL in 30 seconds. Free forever.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEST PANEL -->
+    <div class="panel" id="panel-test">
+      <div class="page-title">Test Your Bot</div>
+      <div class="page-sub">Try the bot here before putting it on your website. It uses your uploaded documents.</div>
+
+      <div class="card" style="max-width:600px;">
+        <div class="card-title">💬 Live Preview</div>
+        <div id="chatArea" style="height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:8px;margin-bottom:16px;">
+          <div style="background:var(--cream);border-radius:12px 12px 12px 4px;padding:12px 16px;font-size:14px;max-width:80%;align-self:flex-start;">
+            👋 Hi! I'm CampusBot. Ask me anything about the college — I'll answer based on the documents you've uploaded!
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="testInput" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')sendTestMessage()"
+            style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'Instrument Sans';font-size:14px;background:var(--cream);outline:none;" />
+          <button class="btn btn-gold" onclick="sendTestMessage()">Send →</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px;">
+          ⚠️ Test mode uses keyword search from your uploaded documents. Add an API key in Configuration for full AI-powered answers.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// State
+let knowledgeBase = [];
+let documents = [];
+let config = { provider: 'free', botName: 'CampusBot', collegeName: '', welcomeMsg: "Hi! I'm CampusBot 👋 Ask me anything about admissions, fees, exams, or college life!", fallbackMsg: "I'm not sure about that — please contact our office at info@college.edu." };
+
+// Navigation
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.target.closest('.nav-item').classList.add('active');
+}
+
+function switchTab(btn, name) {
+  btn.closest('.card').querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['claude','openai','free'].forEach(id => {
+    document.getElementById('panel-' + id).classList.remove('active');
+  });
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// File handling
+function handleFiles(files) {
+  Array.from(files).forEach(file => processFile(file));
+}
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('dragging');
+  handleFiles(e.dataTransfer.files);
+});
+
+async function processFile(file) {
+  const bar = document.getElementById('processBar');
+  const fill = document.getElementById('processFill');
+  const label = document.getElementById('processLabel');
+  const pct = document.getElementById('processPct');
+  bar.classList.add('active');
+
+  const docId = Date.now() + '-' + file.name;
+  let text = '';
+  let pages = 1;
+
+  try {
+    if (file.type === 'application/pdf') {
+      label.textContent = 'Reading PDF pages...';
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      pages = pdf.numPages;
+      for (let i = 1; i <= pages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+        const progress = Math.round((i / pages) * 80);
+        fill.style.width = progress + '%';
+        pct.textContent = progress + '%';
+        label.textContent = `Reading page ${i} of ${pages}...`;
+      }
+    } else {
+      label.textContent = 'Reading document...';
+      fill.style.width = '40%'; pct.textContent = '40%';
+      text = await file.text();
+      fill.style.width = '80%'; pct.textContent = '80%';
+    }
+
+    // Index the text
+    label.textContent = 'Indexing content...';
+    const chunks = chunkText(text, 400);
+    knowledgeBase.push(...chunks.map(chunk => ({ source: file.name, text: chunk })));
+
+    fill.style.width = '100%'; pct.textContent = '100%';
+    label.textContent = '✓ Done!';
+
+    // Add to doc list
+    const doc = { id: docId, name: file.name, pages, chunks: chunks.length, size: (file.size / 1024).toFixed(1) + ' KB' };
+    documents.push(doc);
+    renderDocList();
+    updateStats();
+    showToast('✅ ' + file.name + ' indexed successfully!');
+
+    setTimeout(() => { bar.classList.remove('active'); fill.style.width = '0%'; }, 1500);
+  } catch(e) {
+    label.textContent = '❌ Error reading file';
+    showToast('❌ Could not read ' + file.name);
+    setTimeout(() => bar.classList.remove('active'), 2000);
+  }
+}
+
+function chunkText(text, chunkSize) {
+  const sentences = text.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/);
+  const chunks = [];
+  let current = '';
+  for (const s of sentences) {
+    if ((current + ' ' + s).split(' ').length > chunkSize) {
+      if (current) chunks.push(current.trim());
+      current = s;
+    } else {
+      current += ' ' + s;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter(c => c.length > 30);
+}
+
+function renderDocList() {
+  const list = document.getElementById('docList');
+  if (documents.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px;">No documents yet — upload your first file above</div>';
+    return;
+  }
+  list.innerHTML = documents.map(doc => `
+    <div class="doc-item">
+      <div class="doc-icon">${doc.name.endsWith('.pdf') ? '📄' : '📝'}</div>
+      <div class="doc-info">
+        <div class="doc-name">${doc.name}</div>
+        <div class="doc-meta">${doc.pages} pages · ${doc.chunks} text chunks · ${doc.size}</div>
+      </div>
+      <div class="doc-status ready">✓ Ready</div>
+      <div class="doc-actions">
+        <button class="doc-btn" onclick="removeDoc('${doc.id}')">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function removeDoc(id) {
+  const doc = documents.find(d => d.id === id);
+  if (doc) {
+    knowledgeBase = knowledgeBase.filter(k => k.source !== doc.name);
+    documents = documents.filter(d => d.id !== id);
+    renderDocList();
+    updateStats();
+    showToast('🗑 Removed ' + doc.name);
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-docs').textContent = documents.length;
+  document.getElementById('stat-pages').textContent = documents.reduce((a, d) => a + d.pages, 0);
+  document.getElementById('stat-qa').textContent = knowledgeBase.length;
+  document.getElementById('stat-status').textContent = documents.length > 0 ? '🟢 Ready' : '⚪ Idle';
+}
+
+// Config
+function saveConfig(provider) {
+  config.provider = provider;
+  if (provider === 'claude') config.apiKey = document.getElementById('claudeKey').value;
+  if (provider === 'openai') config.apiKey = document.getElementById('openaiKey').value;
+  showToast('✅ Configuration saved!');
+}
+
+function savePersonality() {
+  config.botName = document.getElementById('botName').value;
+  config.collegeName = document.getElementById('collegeName').value;
+  config.welcomeMsg = document.getElementById('welcomeMsg').value;
+  config.fallbackMsg = document.getElementById('fallbackMsg').value;
+  showToast('✅ Bot personality saved!');
+}
+
+// Test chat
+function sendTestMessage() {
+  const input = document.getElementById('testInput');
+  const query = input.value.trim();
+  if (!query) return;
+  input.value = '';
+
+  const chat = document.getElementById('chatArea');
+
+  // User bubble
+  const userMsg = document.createElement('div');
+  userMsg.style.cssText = 'background:var(--ink);color:var(--paper);border-radius:12px 12px 4px 12px;padding:12px 16px;font-size:14px;max-width:80%;align-self:flex-end;';
+  userMsg.textContent = query;
+  chat.appendChild(userMsg);
+
+  // Typing indicator
+  const typing = document.createElement('div');
+  typing.style.cssText = 'background:var(--cream);border-radius:12px 12px 12px 4px;padding:12px 16px;font-size:14px;max-width:80%;align-self:flex-start;color:var(--muted);';
+  typing.textContent = '...typing';
+  chat.appendChild(typing);
+  chat.scrollTop = chat.scrollHeight;
+
+  setTimeout(() => {
+    const answer = searchKnowledgeBase(query);
+    typing.textContent = answer;
+    typing.style.color = '';
+    chat.scrollTop = chat.scrollHeight;
+  }, 600);
+}
+
+function searchKnowledgeBase(query) {
+  if (knowledgeBase.length === 0) {
+    return "⚠️ No documents uploaded yet. Please go to the Knowledge Base tab and upload your college documents first!";
+  }
+
+  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  let best = null, bestScore = 0;
+
+  for (const chunk of knowledgeBase) {
+    const text = chunk.text.toLowerCase();
+    const score = qWords.reduce((acc, w) => acc + (text.includes(w) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = chunk; }
+  }
+
+  if (bestScore === 0 || !best) return config.fallbackMsg || "I'm not sure about that. Please contact the college office for more information.";
+
+  // Return a trimmed version
+  const sentences = best.text.split(/(?<=[.!?])\s+/);
+  return sentences.slice(0, 4).join(' ') + (sentences.length > 4 ? '...' : '') + '\n\n📄 Source: ' + best.source;
+}
+
+function copyEmbed() {
+  const code = document.getElementById('embedCode').innerText.replace('Copy\n', '');
+  navigator.clipboard.writeText(code).then(() => showToast('✅ Embed code copied!'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

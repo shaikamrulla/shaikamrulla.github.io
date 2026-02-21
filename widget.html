@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Bot Widget</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --accent: #c9a84c;
+    --accent-light: #f0d98a;
+    --bg: #f5f0e8;
+    --white: #fdfcf9;
+    --muted: #7a7060;
+    --border: #e0dbd0;
+    --user-bubble: #1a1a2e;
+    --bot-bubble: #ede8dc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: transparent;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── CLOSED STATE: just the floating button ── */
+  #fab {
+    position: fixed;
+    bottom: 0; right: 0;
+    width: 100%; height: 100%;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 24px;
+    pointer-events: none;
+  }
+
+  .fab-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+    pointer-events: all;
+    position: relative;
+  }
+  .fab-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(0,0,0,0.3); }
+
+  .fab-badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff;
+  }
+
+  /* ── CHAT WINDOW ── */
+  #chatWindow {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--white);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Header */
+  .chat-header {
+    background: var(--primary);
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .header-avatar {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header-info { flex: 1; }
+  .header-name { color: #fff; font-size: 15px; font-weight: 600; }
+  .header-status { color: rgba(255,255,255,0.5); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #5dfdcb; }
+  .header-btn {
+    background: none; border: none; color: rgba(255,255,255,0.5);
+    font-size: 20px; cursor: pointer; line-height: 1; transition: color 0.2s;
+    padding: 4px;
+  }
+  .header-btn:hover { color: #fff; }
+
+  /* Upload bar */
+  .upload-bar {
+    background: #f0ebe0;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+  }
+  .upload-bar:hover { background: #e8e2d4; }
+  .upload-bar input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .upload-bar .ub-icon { font-size: 18px; }
+  .upload-bar .ub-text { flex: 1; }
+  .upload-bar .ub-title { font-size: 13px; font-weight: 600; color: var(--primary); }
+  .upload-bar .ub-sub { font-size: 11px; color: var(--muted); }
+  .upload-bar .ub-status { font-size: 12px; color: var(--accent); font-weight: 500; }
+
+  /* Messages area */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+  }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
+
+  .msg {
+    display: flex; gap: 8px;
+    animation: msgIn 0.2s ease;
+    max-width: 88%;
+  }
+  @keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.bot { align-self: flex-start; }
+
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg.user .msg-avatar { background: var(--primary); }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .msg.bot .bubble {
+    background: var(--bot-bubble);
+    color: var(--primary);
+    border-radius: 4px 16px 16px 16px;
+  }
+  .msg.user .bubble {
+    background: var(--user-bubble);
+    color: #f5f0e8;
+    border-radius: 16px 4px 16px 16px;
+  }
+
+  .source-tag {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    padding-left: 2px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .typing-dots { display: flex; gap: 4px; padding: 4px 2px; }
+  .typing-dots span {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0);} 30%{transform:translateY(-5px);} }
+
+  /* Suggested questions */
+  .suggestions {
+    padding: 0 16px 12px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .sug-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 13px;
+    font-size: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    font-family: 'Instrument Sans';
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .sug-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* Input */
+  .chat-input-wrap {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: flex-end;
+    flex-shrink: 0;
+    background: var(--white);
+  }
+  #userInput {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Instrument Sans';
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    background: var(--bg);
+    color: var(--primary);
+    transition: border-color 0.2s;
+    max-height: 100px;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  #userInput:focus { border-color: var(--accent); }
+  #userInput::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--primary);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: #2d2d4e; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Progress mini */
+  .mini-progress {
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(201,168,76,0.06);
+    display: none;
+    align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mini-progress.show { display: flex; }
+  .mini-bar { flex: 1; height: 3px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .mini-fill { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.3s; width: 0%; }
+</style>
+</head>
+<body>
+
+<!-- FAB Button (shown when chat is closed) -->
+<div id="fab">
+  <button class="fab-btn" onclick="openChat()" title="Ask CampusBot">
+    🎓
+    <span class="fab-badge">?</span>
+  </button>
+</div>
+
+<!-- Chat Window -->
+<div id="chatWindow">
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="header-avatar">🎓</div>
+    <div class="header-info">
+      <div class="header-name" id="botNameDisplay">CampusBot</div>
+      <div class="header-status"><span class="status-dot"></span> Online · Ask me anything</div>
+    </div>
+    <button class="header-btn" onclick="closeChat()" title="Close">✕</button>
+  </div>
+
+  <!-- Upload bar -->
+  <div class="upload-bar" id="uploadBar">
+    <input type="file" id="docUpload" accept=".pdf,.txt,.doc,.docx" multiple onchange="handleUpload(this.files)">
+    <div class="ub-icon">📎</div>
+    <div class="ub-text">
+      <div class="ub-title">Upload College Documents</div>
+      <div class="ub-sub">PDF, TXT, DOC — I'll learn from them instantly</div>
+    </div>
+    <div class="ub-status" id="uploadStatus">0 docs</div>
+  </div>
+
+  <!-- Mini progress -->
+  <div class="mini-progress" id="miniProgress">
+    <span id="miniLabel">Reading...</span>
+    <div class="mini-bar"><div class="mini-fill" id="miniFill"></div></div>
+    <span id="miniPct">0%</span>
+  </div>
+
+  <!-- Messages -->
+  <div id="messages">
+    <div class="msg bot">
+      <div class="msg-avatar">🎓</div>
+      <div>
+        <div class="bubble" id="welcomeBubble">
+          Hi! I'm CampusBot 👋<br>
+          Ask me anything about admissions, fees, exams, or college life!<br><br>
+          <strong>📎 Tip:</strong> Upload your college handbook or regulations PDF above and I'll answer from it!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="suggestions" id="suggestions">
+    <button class="sug-btn" onclick="sendSuggestion(this)">What are the admission requirements?</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">What is the fee structure?</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">When are the exams?</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">Is there a hostel?</button>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-input-wrap">
+    <textarea id="userInput" placeholder="Type your question..." rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let knowledgeBase = [];
+let docCount = 0;
+let isOpen = false;
+let isTyping = false;
+
+// Config (can be injected by parent page via postMessage or URL params)
+let botConfig = {
+  botName: 'CampusBot',
+  welcomeMsg: null,
+  fallbackMsg: "I'm not sure about that. Please contact our college office for more information.",
+  apiKey: null,
+  provider: 'free'
+};
+
+// Check URL params for config
+const params = new URLSearchParams(window.location.search);
+if (params.get('name')) botConfig.botName = params.get('name');
+if (params.get('apiKey')) botConfig.apiKey = params.get('apiKey');
+if (params.get('provider')) botConfig.provider = params.get('provider');
+
+document.getElementById('botNameDisplay').textContent = botConfig.botName;
+
+function openChat() {
+  isOpen = true;
+  document.getElementById('fab').style.display = 'none';
+  const win = document.getElementById('chatWindow');
+  win.style.display = 'flex';
+  win.style.height = '100vh';
+  document.getElementById('userInput').focus();
+}
+
+function closeChat() {
+  isOpen = false;
+  document.getElementById('chatWindow').style.display = 'none';
+  document.getElementById('fab').style.display = 'flex';
+}
+
+// Upload & index documents
+async function handleUpload(files) {
+  const progress = document.getElementById('miniProgress');
+  const fill = document.getElementById('miniFill');
+  const label = document.getElementById('miniLabel');
+  const pct = document.getElementById('miniPct');
+  progress.classList.add('show');
+
+  for (const file of Array.from(files)) {
+    let text = '';
+    let pages = 1;
+
+    try {
+      if (file.type === 'application/pdf') {
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        pages = pdf.numPages;
+        for (let i = 1; i <= pages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(it => it.str).join(' ') + '\n';
+          const p = Math.round(i / pages * 100);
+          fill.style.width = p + '%'; pct.textContent = p + '%';
+          label.textContent = `Reading ${file.name} — page ${i}/${pages}`;
+        }
+      } else {
+        text = await file.text();
+        fill.style.width = '100%'; pct.textContent = '100%';
+      }
+
+      const chunks = chunkText(text, 300);
+      knowledgeBase.push(...chunks.map(c => ({ source: file.name, text: c })));
+      docCount++;
+      document.getElementById('uploadStatus').textContent = docCount + ' doc' + (docCount > 1 ? 's' : '');
+
+      addBotMsg(`✅ I've read **${file.name}** (${pages} pages). You can now ask me questions about its content!`, file.name);
+
+    } catch(e) {
+      addBotMsg(`❌ Sorry, I couldn't read ${file.name}. Please try a different format.`);
+    }
+  }
+
+  setTimeout(() => { progress.classList.remove('show'); fill.style.width = '0%'; }, 1000);
+}
+
+function chunkText(text, size) {
+  const sentences = text.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/);
+  const chunks = [];
+  let cur = '';
+  for (const s of sentences) {
+    if ((cur + ' ' + s).split(' ').length > size) {
+      if (cur) chunks.push(cur.trim());
+      cur = s;
+    } else { cur += ' ' + s; }
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks.filter(c => c.length > 30);
+}
+
+// Messaging
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function sendSuggestion(btn) {
+  document.getElementById('userInput').value = btn.textContent;
+  sendMessage();
+  document.getElementById('suggestions').style.display = 'none';
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const query = input.value.trim();
+  if (!query || isTyping) return;
+  input.value = ''; input.style.height = 'auto';
+
+  addUserMsg(query);
+  document.getElementById('suggestions').style.display = 'none';
+
+  isTyping = true;
+  document.getElementById('sendBtn').disabled = true;
+  const typingEl = addTyping();
+
+  try {
+    let answer;
+    if (botConfig.provider === 'claude' && botConfig.apiKey) {
+      answer = await askClaude(query);
+    } else if (botConfig.provider === 'openai' && botConfig.apiKey) {
+      answer = await askOpenAI(query);
+    } else {
+      await new Promise(r => setTimeout(r, 700));
+      answer = searchLocal(query);
+    }
+    typingEl.remove();
+    addBotMsg(answer);
+  } catch(e) {
+    typingEl.remove();
+    addBotMsg("Sorry, I had trouble processing that. " + botConfig.fallbackMsg);
+  }
+
+  isTyping = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function searchLocal(query) {
+  if (knowledgeBase.length === 0) {
+    return "📎 Please upload a college document first (PDF, TXT, etc.) so I can answer questions from it!\n\nOr ask me general questions like admission requirements, fees, or exams — if you haven't uploaded documents yet, I'll need them to give accurate answers.";
+  }
+
+  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  let best = null, bestScore = 0;
+
+  for (const chunk of knowledgeBase) {
+    const t = chunk.text.toLowerCase();
+    const score = qWords.reduce((acc, w) => acc + (t.includes(w) ? (t.split(w).length - 1) : 0), 0);
+    if (score > bestScore) { bestScore = score; best = chunk; }
+  }
+
+  if (!best || bestScore === 0) return botConfig.fallbackMsg;
+
+  const sentences = best.text.split(/(?<=[.!?])\s+/);
+  const answer = sentences.slice(0, 5).join(' ');
+  return answer + '\n\n📄 From: ' + best.source;
+}
+
+async function askClaude(query) {
+  const context = getRelevantContext(query);
+  const systemPrompt = `You are ${botConfig.botName}, a helpful assistant for a college. Answer student questions ONLY based on the provided college documents. If the answer isn't in the documents, say you don't have that information and suggest contacting the college office.\n\nCOLLEGE DOCUMENTS:\n${context}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': botConfig.apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, system: systemPrompt, messages: [{ role: 'user', content: query }] })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+async function askOpenAI(query) {
+  const context = getRelevantContext(query);
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + botConfig.apiKey },
+    body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 600, messages: [
+      { role: 'system', content: `You are ${botConfig.botName}, a helpful college assistant. Answer based on these documents:\n${context}\n\nIf unsure, say: ${botConfig.fallbackMsg}` },
+      { role: 'user', content: query }
+    ]})
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.choices[0].message.content;
+}
+
+function getRelevantContext(query) {
+  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const scored = knowledgeBase.map(c => ({
+    ...c,
+    score: qWords.reduce((acc, w) => acc + (c.text.toLowerCase().includes(w) ? 1 : 0), 0)
+  })).sort((a, b) => b.score - a.score);
+  return scored.slice(0, 6).map(c => `[${c.source}]: ${c.text}`).join('\n\n');
+}
+
+// UI helpers
+function addUserMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `<div class="msg-avatar">👤</div><div class="bubble">${escHtml(text)}</div>`;
+  document.getElementById('messages').appendChild(el);
+  scrollBottom();
+}
+
+function addBotMsg(text, source) {
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  const formatted = escHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  el.innerHTML = `<div class="msg-avatar">🎓</div><div><div class="bubble">${formatted}</div></div>`;
+  document.getElementById('messages').appendChild(el);
+  scrollBottom();
+  return el;
+}
+
+function addTyping() {
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  el.innerHTML = `<div class="msg-avatar">🎓</div><div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('messages').appendChild(el);
+  scrollBottom();
+  return el;
+}
+
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Listen for config from parent
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'BOT_CONFIG') {
+    Object.assign(botConfig, e.data.config);
+    document.getElementById('botNameDisplay').textContent = botConfig.botName;
+  }
+});
+</script>
+</body>
+</html>
