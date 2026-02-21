@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dhanalakshmi Srinivasan University</title>
+</head>
+<body>
+
+  <h1>Welcome to Our College</h1>
+  <p>Your college website content goes here.</p>
+
+  <!-- DSU HelpBot -->
+  <iframe
+    id="dsu-bot"
+    src="./widget.html"
+    allowtransparency="true"
+    scrolling="no"
+    style="
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 80px;
+      height: 80px;
+      border: none;
+      background: transparent;
+      z-index: 9999;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    ">
+  </iframe>
+
+  <script>
+    const bot = document.getElementById('dsu-bot');
+
+    window.addEventListener('message', function(e) {
+      if (e.data === 'BOT_OPEN') {
+        bot.style.width = '400px';
+        bot.style.height = '600px';
+        bot.style.borderRadius = '20px';
+        bot.style.boxShadow = '0 8px 40px rgba(0,0,0,0.25)';
+      }
+      if (e.data === 'BOT_CLOSE') {
+        bot.style.width = '80px';
+        bot.style.height = '80px';
+        bot.style.borderRadius = '50%';
+        bot.style.boxShadow = 'none';
+      }
+    });
+  </script>
+
+</body>
+</html>
