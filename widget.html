@@ -382,15 +382,16 @@ const COLLEGE_FAQ = [
 let isTyping = false;
 
 function openChat() {
-  document.getElementById('fab').style.display = 'none';
-  const win = document.getElementById('chatWindow');
-  win.style.display = 'flex';
+   document.getElementById('fab').style.display = 'none';
+  document.getElementById('chatWindow').style.display = 'flex';
+  window.parent.postMessage('BOT_OPEN', '*');
   setTimeout(() => document.getElementById('userInput').focus(), 300);
 }
 
 function closeChat() {
-  document.getElementById('chatWindow').style.display = 'none';
+   document.getElementById('chatWindow').style.display = 'none';
   document.getElementById('fab').style.display = 'flex';
+  window.parent.postMessage('BOT_CLOSE', '*');
 }
 
 function handleKey(e) {
