@@ -16,13 +16,15 @@
     src="./widget.html"
     style="
       position: fixed;
-      bottom: 0;
-      right: 0;
-      width: 420px;
-      height: 100vh;
+      bottom: 24px;
+      right: 24px;
+      width: 80px;
+      height: 80px;
       border: none;
       background: transparent;
       z-index: 9999;
+      border-radius: 50%;
+      transition: all 0.3s ease;
     "
     allowtransparency="true"
     scrolling="no">
@@ -30,23 +32,32 @@
 
   <style>
     @media (max-width: 480px) {
-      #dsu-bot { width: 100vw !important; }
+      #dsu-bot.open {
+        width: 100vw !important;
+        height: 100vh !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        border-radius: 0 !important;
+      }
     }
   </style>
 
   <script>
-    // Listen for open/close messages from the widget
     window.addEventListener('message', function(e) {
       const bot = document.getElementById('dsu-bot');
       if (e.data === 'BOT_OPEN') {
-        bot.style.width = '420px';
-        bot.style.height = '100vh';
+        bot.style.width = '400px';
+        bot.style.height = '580px';
+        bot.style.bottom = '24px';
+        bot.style.right = '24px';
+        bot.style.borderRadius = '20px';
+        bot.style.boxShadow = '0 8px 40px rgba(0,0,0,0.2)';
       }
       if (e.data === 'BOT_CLOSE') {
-        bot.style.width = '90px';
-        bot.style.height = '90px';
-        bot.style.bottom = '0';
-        bot.style.right = '0';
+        bot.style.width = '80px';
+        bot.style.height = '80px';
+        bot.style.borderRadius = '50%';
+        bot.style.boxShadow = 'none';
       }
     });
   </script>
