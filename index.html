@@ -3,26 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your College Name</title>
+  <title>Dhanalakshmi Srinivasan University</title>
 </head>
 <body>
 
   <h1>Welcome to Our College</h1>
   <p>Your college website content goes here.</p>
 
-  <!-- Paste the bot embed code here, just before this closing tag -->
-    <iframe
-    id="college-bot-frame"
+  <!-- DSU HelpBot -->
+  <iframe
+    id="dsu-bot"
     src="./widget.html?v=3"
-    style="position:fixed;bottom:24px;right:24px;
-           width:380px;height:580px;border:none;
-           z-index:9999;border-radius:20px;
-           box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+    style="
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 420px;
+      height: 100vh;
+      border: none;
+      background: transparent;
+      z-index: 9999;
+      pointer-events: none;
+    "
+    allowtransparency="true"
+    scrolling="no">
   </iframe>
 
+  <style>
+    #dsu-bot { pointer-events: all; }
+    @media (max-width: 480px) {
+      #dsu-bot { width: 100vw !important; }
+    }
+  </style>
+
 </body>
 </html>
-</body>
-
-</html>
-
