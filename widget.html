@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSU SHAI HelpBot</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --maroon: #7b1c2e;
+    --maroon-dark: #5a1220;
+    --maroon-light: #9e2a3f;
+    --gold: #c9922a;
+    --gold-light: #f0c060;
+    --bg: #fdf8f0;
+    --white: #ffffff;
+    --muted: #7a6a5a;
+    --border: #e8ddd0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; font-family: 'Instrument Sans', sans-serif; }
+
+  /* FAB */
+  #fab {
+    position: fixed; bottom: 24px; right: 24px;
+    pointer-events: none; z-index: 9999;
+  }
+  .fab-btn {
+    width: 62px; height: 62px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--maroon-dark), var(--maroon-light));
+    border: 3px solid var(--gold);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 20px rgba(123,28,46,0.4);
+    transition: transform 0.2s;
+    pointer-events: all; position: relative;
+  }
+  .fab-btn:hover { transform: scale(1.08); }
+  .fab-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--gold); color: #fff;
+    font-size: 10px; font-weight: 700;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff;
+  }
+  .fab-pulse {
+    position: absolute; width: 100%; height: 100%;
+    border-radius: 50%; background: rgba(123,28,46,0.3);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%{transform:scale(1);opacity:0.8;} 100%{transform:scale(1.6);opacity:0;} }
+
+  /* CHAT WINDOW */
+  #chatWindow {
+    display: none; flex-direction: column;
+    position: fixed; bottom: 24px; right: 24px;
+    width: 360px; height: 560px;
+    background: var(--white);
+    border-radius: 18px;
+    box-shadow: 0 8px 40px rgba(90,18,32,0.25);
+    overflow: hidden; z-index: 9999;
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn { from{opacity:0;transform:scale(0.92) translateY(12px);} to{opacity:1;transform:scale(1) translateY(0);} }
+
+  /* HEADER */
+  .chat-header {
+    background: linear-gradient(135deg, var(--maroon-dark), var(--maroon));
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0; border-bottom: 3px solid var(--gold);
+  }
+  .header-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .header-info { flex: 1; }
+  .header-college { color: var(--gold-light); font-size: 9px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .header-name { color: #fff; font-size: 14px; font-weight: 700; }
+  .header-status { color: rgba(255,255,255,0.5); font-size: 10px; display: flex; align-items: center; gap: 4px; margin-top: 1px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #5dfdcb; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .close-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; font-size: 15px; cursor: pointer;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .close-btn:hover { background: rgba(255,255,255,0.3); }
+
+  /* MESSAGES */
+  #messages {
+    flex: 1; overflow-y: auto;
+    padding: 16px 14px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--bg);
+  }
+  #messages::-webkit-scrollbar { width: 3px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
+
+  .msg { display: flex; gap: 8px; animation: msgIn 0.2s ease; }
+  @keyframes msgIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; max-width: 85%; }
+  .msg.bot  { align-self: flex-start; max-width: 92%; }
+
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--maroon), var(--maroon-light));
+    border: 2px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg.user .msg-avatar { background: linear-gradient(135deg, var(--gold), var(--gold-light)); border-color: var(--maroon); }
+
+  .bubble { padding: 10px 13px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+  .msg.bot .bubble {
+    background: var(--white); color: #2a1a1a;
+    border-radius: 4px 14px 14px 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .msg.user .bubble { background: linear-gradient(135deg, var(--maroon), var(--maroon-light)); color: #fff; border-radius: 14px 4px 14px 14px; }
+
+  /* Typing */
+  .typing-dots { display: flex; gap: 4px; padding: 3px 2px; }
+  .typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--maroon-light); animation: bounce 1.2s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);} }
+
+  /* Option buttons */
+  .option-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .opt-btn {
+    padding: 6px 12px; border-radius: 100px;
+    border: 1.5px solid var(--maroon); background: var(--white);
+    color: var(--maroon); font-size: 11.5px; font-weight: 600;
+    cursor: pointer; font-family: 'Instrument Sans'; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .opt-btn:hover { background: var(--maroon); color: #fff; }
+
+  /* Dept cards */
+  .dept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .dept-card {
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 10px 8px; cursor: pointer; text-align: center; transition: all 0.2s;
+    font-size: 11.5px; color: var(--maroon); font-weight: 600; font-family: 'Instrument Sans', sans-serif;
+  }
+  .dept-card:hover { background: var(--maroon); color: #fff; border-color: var(--maroon); transform: translateY(-1px); }
+  .dept-card .dept-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  /* Detail card */
+  .detail-card { background: var(--white); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .detail-header { background: linear-gradient(135deg, var(--maroon-dark), var(--maroon)); padding: 10px 14px; color: #fff; font-size: 13px; font-weight: 700; }
+  .detail-body { padding: 12px 14px; font-size: 12.5px; line-height: 1.7; color: #2a1a1a; }
+  .apply-btn { display: block; margin: 4px 14px 14px; padding: 10px; background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: var(--maroon-dark); font-weight: 700; font-size: 13px; text-align: center; border-radius: 10px; text-decoration: none; transition: all 0.2s; font-family: 'Instrument Sans', sans-serif; cursor: pointer; border: none; }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; margin: 8px 14px; font-size: 11px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: 'Instrument Sans'; padding: 0; }
+  .back-btn:hover { color: var(--maroon); }
+
+  /* Grade calc */
+  .grade-calc { background: var(--white); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); padding: 14px; width: 100%; }
+  .grade-calc h4 { font-size: 13px; color: var(--maroon); margin-bottom: 10px; font-weight: 700; }
+  .grade-row { display: grid; grid-template-columns: 1fr 55px 55px; gap: 5px; margin-bottom: 5px; align-items: center; }
+  .grade-row.header { font-size: 10px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .grade-input { width: 100%; padding: 6px 4px; border: 1.5px solid var(--border); border-radius: 7px; font-family: 'Instrument Sans'; font-size: 12px; background: var(--bg); color: #2a1a1a; outline: none; text-align: center; }
+  .grade-input.sub-name { text-align: left; padding: 6px 8px; }
+  .grade-input:focus { border-color: var(--maroon); }
+  .calc-btn { width: 100%; margin-top: 10px; padding: 9px; background: linear-gradient(135deg, var(--maroon), var(--maroon-light)); color: #fff; border: none; border-radius: 8px; font-family: 'Instrument Sans'; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .grade-result { margin-top: 10px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); text-align: center; display: none; }
+  .grade-result .gpa-val { font-size: 28px; font-weight: 700; color: var(--maroon); }
+  .grade-result .grade-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .grade-result .grade-breakdown { font-size: 11px; color: #2a1a1a; margin-top: 6px; line-height: 1.6; text-align: left; }
+  .add-sub-btn { width: 100%; margin-top: 6px; padding: 7px; background: transparent; border: 1.5px dashed var(--border); border-radius: 8px; color: var(--muted); font-family: 'Instrument Sans'; font-size: 12px; cursor: pointer; }
+  .add-sub-btn:hover { border-color: var(--maroon); color: var(--maroon); }
+
+  /* Input area */
+  .chat-input-wrap {
+    padding: 10px 14px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: flex-end;
+    flex-shrink: 0; background: var(--white);
+  }
+  #userInput {
+    flex: 1; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 12px;
+    font-family: 'Instrument Sans'; font-size: 13px; resize: none; outline: none;
+    background: var(--bg); color: #2a1a1a; transition: border-color 0.2s;
+    max-height: 80px; overflow-y: auto; line-height: 1.5;
+  }
+  #userInput:focus { border-color: var(--maroon); }
+  #userInput::placeholder { color: var(--muted); }
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--maroon), var(--maroon-light));
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0; color: white;
+  }
+  .send-btn:hover { transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .chat-footer { text-align: center; padding: 5px; font-size: 10px; color: var(--muted); background: var(--white); border-top: 1px solid var(--border); }
+  .chat-footer span { color: var(--maroon); font-weight: 600; }
+
+  /* OTP input special */
+  .otp-input {
+    letter-spacing: 8px; font-size: 18px; font-weight: 700;
+    text-align: center; color: var(--maroon);
+  }
+</style>
+</head>
+<body>
+
+<div id="fab">
+  <button class="fab-btn" onclick="openChat()">
+    <div class="fab-pulse"></div>
+    🎓
+    <span class="fab-badge">?</span>
+  </button>
+</div>
+
+<div id="chatWindow">
+  <div class="chat-header">
+    <div class="header-avatar">🤖</div>
+    <div class="header-info">
+      <div class="header-college">Dhanalakshmi Srinivasan University</div>
+      <div class="header-name">SHAI – DSU HelpBot</div>
+      <div class="header-status"><span class="status-dot"></span> Online · Ready to help</div>
+    </div>
+    <button class="close-btn" onclick="closeChat()">✕</button>
+  </div>
+
+  <div id="messages"></div>
+
+  <div class="chat-input-wrap">
+    <textarea id="userInput" placeholder="Type your message..." rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+  <div class="chat-footer">Powered by <span>DSU</span> · Official Student Help Assistant</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  emailjs.init('vYAV8Y6i3dRxkB6BM');
+</script>
+<script>
+const EMAILJS_SERVICE = 'service_2d0h4ej';
+const EMAILJS_TEMPLATE = 'template_tcz7t6e';
+
+async function sendOTPEmail(toEmail, name, otp) {
+  try {
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      to_email: toEmail,
+      name: name || 'Student',
+      passcode: otp,
+      time: '5 minutes'
+    });
+    return true;
+  } catch(e) {
+    console.error('EmailJS error:', e);
+    return false;
+  }
+}
+
+// 🔐 API key lives in backend — never here!
+const BACKEND_URL = 'https://shaiksbot-production.up.railway.app';
+
+const SYSTEM_PROMPT = `You are SHAI, the official AI assistant for Dhanalakshmi Srinivasan University (DSU), Tamil Nadu.
+Answer based on official DSU Regulations 2023 and Admission Eligibility 2025-26.
+
+STRICT: Reply in 3-5 lines MAX. Be direct, warm, and helpful. Use ✅ for key points.
+NEVER say "visit exam cell", "check mycamu", or "contact dean" for general questions — answer directly.
+Only refer to contact for truly personal queries (individual results, specific fee receipts).
+
+=== GRADING (DSU Regulations 2023) ===
+91–100 → O (Outstanding) → 10 pts
+81–90  → A+ (Excellent) → 9 pts
+76–80  → A (Very Good) → 8 pts
+71–75  → B+ (Good) → 7 pts
+61–70  → B (Average) → 6 pts
+50–60  → C (Satisfactory) → 5 pts
+<50    → RA (Reappear) → 0
+SGPA = Sum(Credit × Grade Point) / Sum(Credits)
+CGPA = Cumulative across passed courses. Minimum 5.00 to graduate.
+
+=== CLASSIFICATION ===
+First Class with Distinction: CGPA ≥ 8.50, all first attempt, within 4 years
+First Class: CGPA ≥ 6.50, within 4 years
+Second Class: All other passing students
+
+=== PASSING RULES ===
+Min 50% total (IA 50 + EA 50 = 100). Min 25/50 in EA. No minimum in IA.
+From 3rd attempt: pass if EA alone ≥ 50%.
+
+=== INTERNAL ASSESSMENT (Theory) ===
+2 CATs × 10 = 20 | 2 Assignments × 5 = 10 | Seminar = 5 | Model Exam = 15 | Total = 50
+
+=== ATTENDANCE ===
+Min 80% per course. 70–79%: apply to Dean. 65–69%: VC consideration. Below 65%: redo course.
+
+=== CREDITS ===
+Regular B.Tech: 160 credits. Lateral Entry: 110. Min 14, Max 28 per semester.
+
+=== ELIGIBILITY 2025-26 ===
+B.Tech: 10+2 PCM, min 45% | M.Tech: Relevant degree min 50%
+MBA: Any degree min 50% | MCA: Any graduation min 50%
+B.Pharmacy: 10+2 PCB min 50% | B.Arch: 10+2 PCM + NATA/JEE min 45%
+B.Sc Nursing: 10+2 PCB + English min 50% | Law: 10+2 min 45%
+Arts & Science: 10+2 min 50%
+
+=== FACILITIES ===
+Library: Books, journals, digital resources, e-library, reading halls — open to all students.
+Sports: Indoor & outdoor sports, games, physical exercises organized by PE Department.
+Hostel: Separate boys & girls hostels. Mess available. Curfew 9 PM.
+Transport: Bus facility for day scholars.
+Labs: Modern labs for all departments.
+Clubs: Science, Robotics, Fine Arts, Debate clubs + NCC, NSS, YRC.
+WiFi: Campus-wide internet. Medical: Health centre on campus.
+
+=== PLACEMENTS ===
+Active HRDC cell. Recruiters: TCS, Infosys, Wipro, Tech Mahindra, Zoho & more.
+Placement training, mock interviews, aptitude coaching provided.
+
+=== ABOUT DSU ===
+Location: Samayapuram, Tiruchirappalli – 621 112, Tamil Nadu
+Phone: 1800-5322-222 | Web: dsuniversity.ac.in | NIRF Rank: 44 (2024)
+Established under TN Private Universities Act 2019. AICTE Approved. CBCS system.`;
+
+// ===== STATE =====
+let step = 'email'; // email → otp → main
+let currentUser = null; // { name, email }
+let currentOTP = null;
+let isTyping = false;
+const history = [];
+
+const DEPT_KEYWORDS = ['department', 'departments', 'course', 'courses', 'program', 'branch', 'branches', 'what courses', 'offered'];
+const GRADE_CALC_KEYWORDS = ['calculate my gpa', 'calculate gpa', 'gpa calculator', 'grade calculator', 'calculate sgpa', 'calculate cgpa'];
+
+// ===== DEPARTMENTS DATA =====
+const DEPARTMENTS = [
+  { id:'btech', icon:'⚙️', name:'B.Tech', full:'Bachelor of Technology', duration:'4 Years', seats:'60/branch', branches:'CSE, ECE, EEE, Mech, Civil, IT, AIDS, AIML', eligibility:'10+2 PCM, min 45%', fee:'₹1,20,000/yr', about:'Industry-focused engineering with hands-on labs and strong placements.' },
+  { id:'mtech', icon:'🔬', name:'M.Tech', full:'Master of Technology', duration:'2 Years', seats:'18/branch', branches:'CSE, ECE, Structural', eligibility:'B.Tech/BE min 50%', fee:'₹90,000/yr', about:'Advanced postgraduate engineering with research focus.' },
+  { id:'mba', icon:'💼', name:'MBA', full:'Master of Business Administration', duration:'2 Years', seats:'60', branches:'Finance, HR, Marketing, Logistics, Hospitality, Hospital Admin, Business Analytics', eligibility:'Any degree min 50%', fee:'₹95,000/yr', about:'Business management with industry exposure and case studies.' },
+  { id:'bsc', icon:'🧪', name:'B.Sc', full:'Bachelor of Science', duration:'3 Years', seats:'60/branch', branches:'CS, IT, Maths, Physics, Chemistry, BioTech', eligibility:'10+2 min 50%', fee:'₹65,000/yr', about:'Strong foundation in pure and applied sciences.' },
+  { id:'bca', icon:'💻', name:'BCA', full:'Bachelor of Computer Applications', duration:'3 Years', seats:'60', branches:'Computer Applications', eligibility:'10+2 min 50%', fee:'₹70,000/yr', about:'Computer applications with programming, databases & web development.' },
+  { id:'mca', icon:'🖥️', name:'MCA', full:'Master of Computer Applications', duration:'2 Years', seats:'30', branches:'Computer Applications', eligibility:'BCA/B.Sc CS min 50%', fee:'₹75,000/yr', about:'Advanced software development and IT systems.' },
+  { id:'law', icon:'⚖️', name:'Law', full:'BA/BBA/BCom LLB (Hons)', duration:'5 Years', seats:'60', branches:'Integrated Law', eligibility:'10+2 min 45%', fee:'₹80,000/yr', about:'Legal education with moot courts and practical training.' },
+  { id:'pharmacy', icon:'💊', name:'Pharmacy', full:'B.Pharm / M.Pharm', duration:'4/2 Years', seats:'60/30', branches:'Pharmaceutics, Pharmacology', eligibility:'10+2 PCB min 50%', fee:'₹1,00,000/yr', about:'Pharmacy with modern labs and healthcare career opportunities.' }
+];
+
+// ===== MAIN OPTION BUTTONS =====
+const MAIN_OPTIONS = [
+  { label: '🏛️ About DSU', query: 'Tell me about Dhanalakshmi Srinivasan University' },
+  { label: '🎓 Admission Process', query: 'How to apply for admission at DSU?' },
+  { label: '📚 Courses', query: 'SHOW_DEPARTMENTS' },
+  { label: '🏠 Hostel', query: 'Tell me about hostel facilities at DSU' },
+  { label: '💼 Placements', query: 'Tell me about placement opportunities at DSU' },
+  { label: '📊 Grades & GPA', query: 'How does the grading system work at DSU?' },
+  { label: '📋 Attendance Rules', query: 'What are the attendance requirements at DSU?' },
+  { label: '🏫 Campus Life', query: 'Tell me about campus facilities like library and sports at DSU' },
+  { label: '📞 Contact DSU', query: 'What are the contact details of DSU?' },
+  { label: '🧮 GPA Calculator', query: 'SHOW_CALCULATOR' },
+];
+
+// ===== UTILS =====
+function generateOTP() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+function scrollBottom() { const m = document.getElementById('messages'); m.scrollTop = m.scrollHeight; }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+
+function openChat() {
+  document.getElementById('fab').style.display = 'none';
+  document.getElementById('chatWindow').style.display = 'flex';
+  if (document.getElementById('messages').children.length === 0) startFlow();
+  setTimeout(() => document.getElementById('userInput').focus(), 300);
+}
+function closeChat() {
+  document.getElementById('chatWindow').style.display = 'none';
+  document.getElementById('fab').style.display = 'flex';
+}
+
+// ===== MESSAGE HELPERS =====
+function addBotMsg(html, withAvatar=true) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  if (withAvatar) {
+    const av = document.createElement('div');
+    av.className = 'msg-avatar'; av.textContent = '🤖';
+    wrap.appendChild(av);
+  }
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerHTML = html;
+  wrap.appendChild(b);
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+  return wrap;
+}
+
+function addUserMsg(text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg user';
+  wrap.innerHTML = `<div class="msg-avatar">👤</div><div class="bubble">${esc(text)}</div>`;
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+}
+
+function addTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot'; wrap.id = 'typing';
+  wrap.innerHTML = `<div class="msg-avatar">🤖</div><div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+  return wrap;
+}
+
+function removeTyping() { const t=document.getElementById('typing'); if(t) t.remove(); }
+
+// ===== OPTION BUTTONS =====
+function showMainOptions(greeting = '') {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  wrap.style.maxWidth = '100%';
+
+  const av = document.createElement('div');
+  av.className = 'msg-avatar'; av.textContent = '🤖';
+
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.style.borderRadius = '4px 14px 14px 14px';
+  b.innerHTML = `${greeting ? `<div style="margin-bottom:8px;">${greeting}</div>` : ''}<strong>Tell me! How can I assist you?</strong>`;
+
+  const opts = document.createElement('div');
+  opts.className = 'option-buttons';
+  opts.style.marginTop = '10px';
+
+  MAIN_OPTIONS.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt.label;
+    btn.onclick = () => handleOptionClick(opt);
+    opts.appendChild(btn);
+  });
+
+  b.appendChild(opts);
+  wrap.appendChild(av);
+  wrap.appendChild(b);
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+}
+
+function handleOptionClick(opt) {
+  addUserMsg(opt.label);
+  if (opt.query === 'SHOW_DEPARTMENTS') { showDeptCards(); return; }
+  if (opt.query === 'SHOW_CALCULATOR') { showGradeCalc(); return; }
+  askAI(opt.query);
+}
+
+// ===== FLOW =====
+async function startFlow() {
+  await delay(400);
+  step = 'email';
+  addBotMsg(`<strong>நமஸ்காரம்! Hi there! 👋</strong><br><br>I'm <strong>SHAI</strong>, your official assistant for <strong>Dhanalakshmi Srinivasan University</strong>!<br><br>To get started, please enter your <strong>email address</strong>:`);
+  document.getElementById('userInput').placeholder = 'Enter your email...';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== SEND MESSAGE =====
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || isTyping) return;
+  input.value = ''; input.style.height = 'auto';
+
+  addUserMsg(text);
+
+  if (step === 'email') { await handleEmail(text); return; }
+  if (step === 'otp') { await handleOTP(text); return; }
+  if (step === 'name') { await handleName(text); return; }
+
+  // Main chat
+  document.getElementById('sendBtn').disabled = true;
+  isTyping = true;
+
+  if (DEPT_KEYWORDS.some(k => text.toLowerCase().includes(k))) {
+    showDeptCards(); isTyping=false; document.getElementById('sendBtn').disabled=false; return;
+  }
+  if (GRADE_CALC_KEYWORDS.some(k => text.toLowerCase().includes(k))) {
+    showGradeCalc(); isTyping=false; document.getElementById('sendBtn').disabled=false; return;
+  }
+
+  await askAI(text);
+  isTyping = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+// ===== EMAIL STEP =====
+async function handleEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    await delay(400);
+    addBotMsg(`⚠️ That doesn't look like a valid email. Please enter a valid email address:`);
+    return;
+  }
+
+  // Check if email already registered in shared storage
+  let existingUser = null;
+  try {
+    const stored = await window.storage.get('shai_user_' + email.toLowerCase().replace(/[@.]/g, '_'));
+    if (stored) existingUser = JSON.parse(stored.value);
+  } catch(e) {}
+
+  currentOTP = generateOTP();
+
+  if (existingUser) {
+    currentUser = existingUser;
+    step = 'otp';
+    await delay(400);
+    addBotMsg(`👋 Hey <strong>${existingUser.name}</strong>! Looks like you've already registered with us!`);
+    await delay(500);
+    addBotMsg(`⏳ Sending OTP to <strong>${email}</strong>...`);
+    const sent = await sendOTPEmail(email, existingUser.name, currentOTP);
+    if (sent) {
+      addBotMsg(`✅ OTP sent! Check your inbox at <strong>${email}</strong> and enter the OTP 🔐`);
+    } else {
+      addBotMsg(`⚠️ Email failed. Your OTP is <strong>${currentOTP}</strong> (fallback)`);
+    }
+    document.getElementById('userInput').placeholder = 'Enter OTP...';
+  } else {
+    currentUser = { email: email };
+    step = 'name';
+    await delay(400);
+    addBotMsg(`✅ Great! What's your <strong>full name</strong>?`);
+    document.getElementById('userInput').placeholder = 'Enter your name...';
+  }
+}
+
+// ===== OTP STEP =====
+async function handleOTP(otp) {
+  if (otp.trim() === currentOTP) {
+    step = 'main';
+    await delay(300);
+    addBotMsg(`✅ Verified! Welcome back, <strong>${currentUser.name}</strong>! 🎉`);
+    await delay(500);
+    // Save as last used user for quick login
+    try { await window.storage.set('shai_user', JSON.stringify(currentUser)); } catch(e) {}
+    showMainOptions();
+    document.getElementById('userInput').placeholder = 'Type your message...';
+  } else {
+    await delay(300);
+    addBotMsg(`❌ Incorrect OTP. Please try again. Your OTP is <strong>${currentOTP}</strong>`);
+  }
+}
+
+// ===== NAME STEP =====
+async function handleName(name) {
+  if (name.length < 2) {
+    addBotMsg(`Please enter your full name:`);
+    return;
+  }
+  currentUser.name = name;
+
+  // Save new user to storage
+  const key = 'shai_user_' + currentUser.email.toLowerCase().replace(/[@.]/g, '_');
+  try {
+    await window.storage.set(key, JSON.stringify(currentUser));
+    await window.storage.set('shai_user', JSON.stringify(currentUser));
+  } catch(e) {}
+
+  // New user — no OTP needed, go straight to main chat
+  step = 'main';
+  await delay(400);
+  addBotMsg(`🎉 Welcome, <strong>${name}</strong>! You're all set!`);
+  await delay(500);
+  showMainOptions();
+  document.getElementById('userInput').placeholder = 'Type your message...';
+}
+
+// ===== DEPT CARDS =====
+function showDeptCards() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot'; wrap.style.maxWidth = '100%';
+  const av = document.createElement('div'); av.className='msg-avatar'; av.textContent='🤖';
+  const b = document.createElement('div'); b.className='bubble'; b.style.borderRadius='4px 14px 14px 14px';
+  b.innerHTML = `<strong>Our Departments 👇</strong><br><span style="font-size:11px;color:#7a6a5a;">Click on a department to know more</span>`;
+  const grid = document.createElement('div'); grid.className='dept-grid';
+  DEPARTMENTS.forEach(dept => {
+    const card = document.createElement('button'); card.className='dept-card';
+    card.innerHTML = `<span class="dept-icon">${dept.icon}</span>${dept.name}`;
+    card.onclick = () => showDeptDetail(dept);
+    grid.appendChild(card);
+  });
+  b.appendChild(grid); wrap.appendChild(av); wrap.appendChild(b);
+  document.getElementById('messages').appendChild(wrap); scrollBottom();
+}
+
+function showDeptDetail(dept) {
+  const wrap = document.createElement('div'); wrap.className='msg bot'; wrap.style.maxWidth='100%';
+  const av = document.createElement('div'); av.className='msg-avatar'; av.textContent='🤖';
+  const card = document.createElement('div'); card.className='detail-card';
+  card.innerHTML = `
+    <div class="detail-header">${dept.icon} ${dept.name} – ${dept.full}</div>
+    <div class="detail-body">
+      <p>${dept.about}</p>
+      <p>⏱ <strong>Duration:</strong> ${dept.duration}</p>
+      <p>🪑 <strong>Seats:</strong> ${dept.seats}</p>
+      <p>📚 <strong>Branches:</strong> ${dept.branches}</p>
+      <p>✅ <strong>Eligibility:</strong> ${dept.eligibility}</p>
+      <p>💰 <strong>Fee:</strong> ${dept.fee}</p>
+    </div>
+    <a class="apply-btn" href="https://dsuniversity.ac.in/admissions" target="_blank">🎓 Apply Now for Admission</a>
+    <button class="back-btn" onclick="this.closest('.msg').remove();showDeptCards();">← Back to Departments</button><br><br>
+  `;
+  wrap.appendChild(av); wrap.appendChild(card);
+  document.getElementById('messages').appendChild(wrap); scrollBottom();
+}
+
+// ===== GRADE CALCULATOR =====
+function showGradeCalc() {
+  const wrap = document.createElement('div'); wrap.className='msg bot'; wrap.style.maxWidth='100%';
+  const av = document.createElement('div'); av.className='msg-avatar'; av.textContent='🤖';
+  const calcId = 'gc_'+Date.now();
+  const card = document.createElement('div'); card.className='grade-calc'; card.id=calcId;
+  card.innerHTML = `
+    <h4>📊 DSU GPA Calculator (Regulation 2023)</h4>
+    <div class="grade-row header"><span>Subject</span><span>Mark/100</span><span>Credit</span></div>
+    <div id="${calcId}_rows">
+      ${[1,2,3,4,5].map(i=>`<div class="grade-row">
+        <input class="grade-input sub-name" placeholder="Subject ${i}" type="text"/>
+        <input class="grade-input mark" placeholder="e.g. 78" type="number" min="0" max="100"/>
+        <input class="grade-input credit" placeholder="e.g. 4" type="number" min="1" max="6"/>
+      </div>`).join('')}
+    </div>
+    <button class="add-sub-btn" onclick="addSubjectRow('${calcId}')">+ Add Subject</button>
+    <button class="calc-btn" onclick="calculateGrade('${calcId}')">Calculate GPA</button>
+    <div class="grade-result" id="${calcId}_result">
+      <div class="gpa-val" id="${calcId}_gpa">-</div>
+      <div class="grade-label" id="${calcId}_label">-</div>
+      <div class="grade-breakdown" id="${calcId}_breakdown"></div>
+    </div>
+  `;
+  wrap.appendChild(av); wrap.appendChild(card);
+  document.getElementById('messages').appendChild(wrap); scrollBottom();
+}
+
+function addSubjectRow(calcId) {
+  const rows = document.getElementById(calcId+'_rows');
+  const count = rows.children.length+1;
+  const row = document.createElement('div'); row.className='grade-row';
+  row.innerHTML = `<input class="grade-input sub-name" placeholder="Subject ${count}" type="text"/>
+    <input class="grade-input mark" placeholder="e.g. 78" type="number" min="0" max="100"/>
+    <input class="grade-input credit" placeholder="e.g. 4" type="number" min="1" max="6"/>`;
+  rows.appendChild(row); scrollBottom();
+}
+
+function calculateGrade(calcId) {
+  const rows = document.getElementById(calcId+'_rows').children;
+  let totalPoints=0, totalCredits=0; const breakdown=[];
+  for (const row of rows) {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0].value.trim() || 'Subject';
+    const mark = parseFloat(inputs[1].value);
+    const credit = parseFloat(inputs[2].value);
+    if (isNaN(mark)||isNaN(credit)) continue;
+    let gp;
+    if (mark>=91) gp=10; else if (mark>=81) gp=9; else if (mark>=76) gp=8;
+    else if (mark>=71) gp=7; else if (mark>=61) gp=6; else if (mark>=50) gp=5; else gp=0;
+    const lg = mark>=91?'O':mark>=81?'A+':mark>=76?'A':mark>=71?'B+':mark>=61?'B':mark>=50?'C':'RA';
+    totalPoints+=gp*credit; totalCredits+=credit;
+    breakdown.push(`${name}: ${mark} → ${lg} (${gp}pts × ${credit}cr)`);
+  }
+  if (totalCredits===0) { alert('Enter marks and credits for at least one subject!'); return; }
+  const gpa=(totalPoints/totalCredits).toFixed(2);
+  const gpaNum=parseFloat(gpa);
+  const label = gpaNum>=8.5?'🏆 First Class with Distinction':gpaNum>=6.5?'🌟 First Class':gpaNum>=5?'👍 Second Class (Pass)':'❌ Fail';
+  const status = gpaNum>=5?'✅ Pass':'❌ RA Required';
+  document.getElementById(calcId+'_result').style.display='block';
+  document.getElementById(calcId+'_gpa').textContent=gpa+' / 10';
+  document.getElementById(calcId+'_label').textContent=label+' · '+status;
+  document.getElementById(calcId+'_breakdown').innerHTML=breakdown.join('<br>');
+  scrollBottom();
+}
+
+// ===== AI CALL =====
+async function askAI(query) {
+  const typingEl = addTyping();
+  history.push({ role:'user', content: query });
+  try {
+    const res = await fetch(BACKEND_URL + '/api/chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[{ role:'system', content:SYSTEM_PROMPT }, ...history]
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    if (data.error) { addBotMsg('⚠️ '+data.error.message); history.pop(); }
+    else {
+      const reply = data.choices[0].message.content;
+      addBotMsg(reply.replace(/\n/g,'<br>'));
+      history.push({ role:'assistant', content:reply });
+    }
+  } catch(e) {
+    removeTyping();
+    addBotMsg('⚠️ Connection error. Please try again.');
+    history.pop();
+  }
+  // Show main options again after AI reply
+  await delay(300);
+  showMainOptions();
+}
+</script>
+</body>
+</html>
